@@ -5,7 +5,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { InstallProvider } from './context/InstallContext';
 import ColdStartLoader from './components/ColdStartLoader';
-import InstallBanner from './components/InstallBanner';
 import './index.css';
 
 import Login       from './pages/Login';
@@ -59,7 +58,6 @@ export default function App() {
             <BrowserRouter>
               {!serverReady && <ColdStartLoader onReady={handleReady} />}
               {serverReady && <AppRoutes />}
-              <InstallBanner />
             </BrowserRouter>
           </InstallProvider>
         </AuthProvider>

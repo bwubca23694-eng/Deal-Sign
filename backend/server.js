@@ -1,104 +1,104 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
+
+// ── Hard-fail on missing critical env vars ───────────────────────────────
+const REQUIRED_ENV = ['MONGO_URI', 'JWT_SECRET', 'SESSION_SECRET'];
+const MISSING = REQUIRED_ENV.filter(k => !process.env[k]);
+if (MISSING.length) {
+  console.error(`❌  Missing required environment variables: ${MISSING.join(', ')}`);
+  console.error('    Copy .env.example to .env and fill in all values.');
+  process.exit(1);
+}
+
+const express       = require('express');
+const cors          = require('cors');
+const helmet        = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
-const rateLimit = require('express-rate-limit');
-const mongoose = require('mongoose');
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
-const passport = require('./config/passport');
+const rateLimit     = require('express-rate-limit');
+const mongoose      = require('mongoose');
+const session       = require('express-session');
+const MongoStore    = require('connect-mongo');
+const passport      = require('./config/passport');
 
 const authRoutes    = require('./routes/auth');
 const dealRoutes    = require('./routes/deals');
 const profileRoutes = require('./routes/profile');
 
 const app = express();
-const isProd      = process.env.NODE_ENV === 'production';
+const isProd       = process.env.NODE_ENV === 'production';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 
-// ── Trust proxy (required for rate limiting behind Render/nginx) ──────────
+// ── Trust proxy ───────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 
-// ── Security headers (helmet) ─────────────────────────────────────────────
+// ── Security headers ──────────────────────────────────────────────────────
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }, // allow Cloudinary images
-  contentSecurityPolicy: false // React handles its own CSP
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false,
 }));
 
 // ── CORS ──────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: [FRONTEND_URL, 'http://localhost:3000'],
-  credentials: true
+  credentials: true,
 }));
 
 // ── Rate limiting ──────────────────────────────────────────────────────────
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 200,
+const limiter = (max) => rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { message: 'Too many requests, please try again later.' }
+  message: { message: 'Too many requests, please try again later.' },
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20, // strict for auth endpoints
-  message: { message: 'Too many login attempts, please try again in 15 minutes.' }
-});
-
-app.use(globalLimiter);
-app.use('/api/auth/login',    authLimiter);
-app.use('/api/auth/register', authLimiter);
+app.use(limiter(200));                              // global
+app.use('/api/auth/login',       limiter(20));      // brute-force protection
+app.use('/api/auth/register',    limiter(20));
+app.use('/api/profile/password', limiter(10));      // password change protection
 
 // ── Body parsing ───────────────────────────────────────────────────────────
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.json({ limit: '5mb' }));            // reduced from 15mb — sig capped at 500KB
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // ── MongoDB injection sanitization ────────────────────────────────────────
 app.use(mongoSanitize());
 
-// ── Session ────────────────────────────────────────────────────────────────
-const sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'dev_session_secret_change_this',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProd,
-    httpOnly: true,
-    sameSite: isProd ? 'none' : 'lax',
-    maxAge: 10 * 60 * 1000 // 10 min – only used during OAuth handoff
-  }
-};
-
-// ── Connect DB then start server ───────────────────────────────────────────
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/dealflow')
+// ── Connect DB then boot ───────────────────────────────────────────────────
+mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('✅  MongoDB connected');
 
-    sessionConfig.store = MongoStore.create({
-      mongoUrl: process.env.MONGO_URI || 'mongodb://localhost:27017/dealflow'
-    });
+    // ── Session (only used during OAuth handoff) ──────────────────────────
+    app.use(session({
+      secret: process.env.SESSION_SECRET,
+      resave: false,
+      saveUninitialized: false,
+      store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+      cookie: {
+        secure: isProd,
+        httpOnly: true,
+        sameSite: isProd ? 'none' : 'lax',
+        maxAge: 10 * 60 * 1000,  // 10 min – only needed for OAuth handoff
+      },
+    }));
 
-    app.use(session(sessionConfig));
     app.use(passport.initialize());
     app.use(passport.session());
 
-    // ── Routes ──────────────────────────────────────────────────────────────
+    // ── Routes ─────────────────────────────────────────────────────────────
     app.use('/api/auth',    authRoutes);
     app.use('/api/deals',   dealRoutes);
     app.use('/api/profile', profileRoutes);
 
     app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
-    // ── 404 for unknown API routes ───────────────────────────────────────────
     app.use('/api/*', (req, res) => res.status(404).json({ message: 'Not found' }));
 
-    // ── Global error handler ─────────────────────────────────────────────────
+    // ── Global error handler ────────────────────────────────────────────────
     app.use((err, req, res, next) => {
       console.error(err.stack);
       res.status(err.status || 500).json({
-        message: isProd ? 'Internal server error' : err.message
+        message: isProd ? 'Internal server error' : err.message,
       });
     });
 

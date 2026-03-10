@@ -291,8 +291,11 @@ export default function ClientDeal() {
     if (isEmpty) { setSignErr('Please draw your signature to continue.'); return; }
     setSignErr(''); setSigning(true);
     try {
-      const res = await axios.patch(`${API}/deals/${dealId}/sign`, { signatureData: canvasRef.current.toDataURL('image/png') });
-      setDeal(res.data.deal); setStep('done');
+      const sigData = canvasRef.current.toDataURL('image/png');
+      const res = await axios.patch(`${API}/deals/${dealId}/sign`, { signatureData: sigData });
+      // Server strips signatureData from response for security — keep it locally for PDF
+      setDeal(d => ({ ...d, ...res.data.deal, signatureData: sigData }));
+      setStep('done');
     } catch (err) { setSignErr(err.response?.data?.message || 'Signing failed. Please try again.'); }
     finally { setSigning(false); }
   };
@@ -473,10 +476,12 @@ export default function ClientDeal() {
                 </div>
               )}
 
-              {/* Download PDF */}
+              {/* Download PDF — only available immediately after signing in same session */}
+              {deal.signatureData && (
               <button className="btn btn-outline btn-full" style={{ marginTop: 16 }} onClick={downloadContract} disabled={downloading}>
                 {downloading ? 'Generating PDF…' : '⬇ Download signed contract (PDF)'}
               </button>
+              )}
             </div>
           )}
 

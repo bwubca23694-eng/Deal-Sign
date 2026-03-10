@@ -492,3 +492,42 @@ textarea { resize: vertical; min-height: 96px; line-height: 1.65; }
   .deal-card-main { padding: 18px; }
   .step-card      { padding: 18px; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   COMPAT ALIASES (teal → green rename shim)
+═══════════════════════════════════════════════════════════ */
+:root {
+  --teal-50:  var(--green-bg);
+  --teal-100: var(--green-border);
+  --teal-500: var(--green);
+  --teal-600: var(--green-dark);
+  --teal-700: #0A7255;
+}
+
+.btn-teal { background: var(--green); color: #fff; box-shadow: 0 1px 4px rgba(15,169,122,.25); }
+.btn-teal:hover { background: var(--green-dark); box-shadow: 0 4px 14px rgba(15,169,122,.3); }
+
+/* ═══════════════════════════════════════════════════════════
+   LANDING PAGE — RESPONSIVE (proper selectors)
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Landing hero grid */
+  .land-hero-grid { grid-template-columns: 1fr !important; }
+  .land-mockup-hide { display: none !important; }
+  /* Landing feature grid */
+  .land-feat-grid { grid-template-columns: 1fr !important; }
+  .land-phone-hide { display: none !important; }
+  /* Landing step grid */
+  .land-step-grid-r { grid-template-columns: 1fr 1fr !important; }
+  /* Hero CTA stack */
+  .land-hero-cta { flex-direction: column !important; }
+
+  /* CreateDeal */
+  .cd-outer-grid { grid-template-columns: 1fr !important; }
+  .cd-tips-panel { display: none !important; }
+  .cd-two-col    { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 480px) {
+  .land-step-grid-r { grid-template-columns: 1fr !important; }
+}
