@@ -4,148 +4,180 @@ import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 const API = process.env.REACT_APP_API_URL || '/api';
+const FRONTEND = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
 
 export default function CreateDeal() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ clientName: '', projectTitle: '', projectDescription: '', amount: '', deliveryDate: '', revisionsIncluded: 1 });
-  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    clientName: '', projectTitle: '', projectDescription: '',
+    amount: '', deliveryDate: '', revisionsIncluded: 1
+  });
+  const [error,   setError]   = useState('');
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied,  setCopied]  = useState(false);
+  const [sharing, setSharing] = useState(false);
 
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-    if (!user?.upiId) { setError('Please set your UPI ID in Settings first.'); return; }
+    if (!user?.upiId) { setError('Please set your UPI ID in Settings before creating a deal.'); return; }
     setError(''); setLoading(true);
     try {
-      const res = await axios.post(`${API}/deals`, { ...form, amount: Number(form.amount), revisionsIncluded: Number(form.revisionsIncluded) });
+      const res = await axios.post(`${API}/deals`, {
+        ...form, amount: Number(form.amount), revisionsIncluded: Number(form.revisionsIncluded)
+      });
       setSuccess(res.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create deal. Try again.');
+      setError(err.response?.data?.message || 'Failed to create deal. Please try again.');
     } finally { setLoading(false); }
   };
 
-  if (success) {
-    const link = `${window.location.origin}/deal/${success.dealId}`;
-    const copy = () => { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-    return (
-      <div style={s.successOuter}>
-        <div style={s.successCard}>
-          <div style={s.successIcon}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="13" fill="var(--teal-50)" stroke="var(--teal-200)" strokeWidth="1.5"/><path d="M8 14l4 4 8-8" stroke="var(--teal-500)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>
-          <h2 style={s.successTitle}>Deal created!</h2>
-          <p style={s.successSub}>Share this link with <strong>{success.clientName}</strong> — they can review, sign, and pay without signing up.</p>
-          <div style={s.linkCard}>
-            <span style={{ ...s.linkText, fontFamily: 'var(--mono)', fontSize: 13 }}>{link}</span>
-            <button className="btn btn-teal btn-sm" onClick={copy} style={{ flexShrink: 0 }}>
-              {copied ? '✓ Copied' : 'Copy link'}
-            </button>
-          </div>
-          <div style={s.successActions}>
-            <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>Go to Dashboard</button>
-            <button className="btn btn-outline" onClick={() => { setSuccess(null); setForm({ clientName: '', projectTitle: '', projectDescription: '', amount: '', deliveryDate: '', revisionsIncluded: 1 }); }}>
-              + Create another
-            </button>
-          </div>
+  const dealUrl = success ? `${FRONTEND}/deal/${success.dealId}` : '';
+
+  const copyLink = async () => {
+    await navigator.clipboard.writeText(dealUrl);
+    setCopied(true); setTimeout(() => setCopied(false), 2500);
+  };
+
+  const shareLink = async () => {
+    const text = `Here's my project proposal for "${success.projectTitle}" — ₹${Number(success.amount).toLocaleString('en-IN')}. Click to review and sign.`;
+    if (navigator.share) {
+      setSharing(true);
+      try { await navigator.share({ title: `Proposal: ${success.projectTitle}`, text, url: dealUrl }); }
+      catch {} finally { setSharing(false); }
+    } else {
+      copyLink();
+    }
+  };
+
+  const whatsappUrl = success
+    ? `https://wa.me/?text=${encodeURIComponent(`📋 *Project Proposal*\n\n*${success.projectTitle}*\nAmount: ₹${Number(success.amount).toLocaleString('en-IN')}\n\nClick to review and sign:\n${dealUrl}`)}`
+    : '';
+
+  if (success) return (
+    <div style={s.page}>
+      <div style={s.successWrap} className="fade-up">
+        <div style={s.successTick}>✓</div>
+        <h1 style={s.successTitle}>Proposal created!</h1>
+        <p style={s.successSub}>Share this link with <strong>{success.clientName}</strong> to review, sign, and pay.</p>
+
+        <div style={s.linkBox}>
+          <div style={s.linkUrl}>{dealUrl}</div>
+          <button className="btn btn-outline btn-sm" onClick={copyLink} style={{ flexShrink: 0 }}>
+            {copied ? '✓ Copied' : 'Copy'}
+          </button>
+        </div>
+
+        <div style={s.shareRow}>
+          {/* Native share (opens all apps on mobile) */}
+          <button className="btn btn-teal btn-full btn-lg" onClick={shareLink} disabled={sharing}>
+            {sharing ? 'Opening…' : '↗ Share proposal'}
+          </button>
+          {/* WhatsApp direct */}
+          <a href={whatsappUrl} target="_blank" rel="noreferrer" className="btn btn-outline btn-full"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.464 3.488"/></svg>
+            Share on WhatsApp
+          </a>
+        </div>
+
+        <div style={s.dealSummary}>
+          <div style={s.dRow}><span style={s.dLabel}>Project</span><span style={s.dVal}>{success.projectTitle}</span></div>
+          <div style={s.dRow}><span style={s.dLabel}>Client</span><span style={s.dVal}>{success.clientName}</span></div>
+          <div style={s.dRow}><span style={s.dLabel}>Amount</span><span style={{ ...s.dVal, color: 'var(--teal-500)', fontFamily: 'var(--mono)', fontWeight: 700 }}>₹{Number(success.amount).toLocaleString('en-IN')}</span></div>
+        </div>
+
+        <div style={s.actionRow}>
+          <button className="btn btn-ghost" onClick={() => { setSuccess(null); setForm({ clientName:'', projectTitle:'', projectDescription:'', amount:'', deliveryDate:'', revisionsIncluded:1 }); }}>
+            + Create another
+          </button>
+          <button className="btn btn-outline" onClick={() => navigate('/dashboard')}>
+            View all deals
+          </button>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div>
-      <div style={s.pageHead}>
+    <div style={s.page}>
+      <div style={s.header}>
         <div>
-          <button className="btn btn-ghost btn-sm" style={{ marginBottom: 8, padding: '4px 0', color: 'var(--ink-muted)' }} onClick={() => navigate('/dashboard')}>
-            ← Back
-          </button>
-          <h1 style={s.pageTitle}>New Deal</h1>
-          <p style={s.pageSub}>Fill in the project details. A shareable link will be generated instantly.</p>
+          <h1 style={s.title}>New proposal</h1>
+          <p style={s.sub}>Fill in the details — your client will review, sign, and pay.</p>
         </div>
       </div>
 
       {!user?.upiId && (
-        <div className="alert alert-warning" style={{ marginBottom: 24 }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}><path d="M8 1L15 14H1L8 1Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M8 6v4M8 11.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          <span>You haven't set a UPI ID yet. <span style={{ fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' }} onClick={() => navigate('/profile')}>Go to Settings</span> to add it first.</span>
+        <div className="alert alert-warning" style={{ marginBottom: 20 }}>
+          ⚠ You haven't set a UPI ID yet.{' '}
+          <button onClick={() => navigate('/profile')} style={{ fontWeight: 700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>
+            Add it in Settings →
+          </button>
         </div>
       )}
 
-      {error && <div className="alert alert-error"><span>⚠</span> {error}</div>}
+      <div style={s.grid}>
+        <form onSubmit={handleSubmit} style={s.formCard}>
+          {error && <div className="alert alert-error">{error}</div>}
 
-      <div style={s.formGrid}>
-        <div style={s.formCard}>
-          <form onSubmit={handleSubmit}>
-            <h3 style={s.formSection}>Client & Project</h3>
-            <div style={s.row}>
-              <div className="field" style={{ flex: 1 }}>
-                <label>Client name *</label>
-                <input value={form.clientName} onChange={set('clientName')} placeholder="Rahul Sharma" required />
+          <div style={s.section}>
+            <div style={s.sectionTitle}>Client & project</div>
+            <div className="field">
+              <label>Client name</label>
+              <input value={form.clientName} onChange={set('clientName')} placeholder="Raj Mehta" required />
+            </div>
+            <div className="field">
+              <label>Project title</label>
+              <input value={form.projectTitle} onChange={set('projectTitle')} placeholder="Mobile App Development" required />
+            </div>
+            <div className="field">
+              <label>Scope of work</label>
+              <textarea value={form.projectDescription} onChange={set('projectDescription')} placeholder="Describe deliverables, what's included, what's not…" rows={4} required />
+            </div>
+          </div>
+
+          <hr className="divider" />
+
+          <div style={s.section}>
+            <div style={s.sectionTitle}>Terms</div>
+            <div style={s.twoCol}>
+              <div className="field">
+                <label>Amount (₹)</label>
+                <input type="number" value={form.amount} onChange={set('amount')} placeholder="50000" min="1" required />
               </div>
-              <div className="field" style={{ flex: 1 }}>
-                <label>Project title *</label>
-                <input value={form.projectTitle} onChange={set('projectTitle')} placeholder="E-commerce Redesign" required />
+              <div className="field">
+                <label>Delivery date</label>
+                <input type="date" value={form.deliveryDate} onChange={set('deliveryDate')} required />
               </div>
             </div>
             <div className="field">
-              <label>Project description *</label>
-              <textarea value={form.projectDescription} onChange={set('projectDescription')} placeholder="Describe the scope of work, deliverables, and any specific requirements…" required style={{ minHeight: 110 }} />
+              <label>Revisions included <span className="optional">optional</span></label>
+              <input type="number" value={form.revisionsIncluded} onChange={set('revisionsIncluded')} min="0" max="20" />
             </div>
-
-            <h3 style={{ ...s.formSection, marginTop: 28 }}>Terms</h3>
-            <div style={s.row}>
-              <div className="field" style={{ flex: 1 }}>
-                <label>Amount (₹ INR) *</label>
-                <input type="number" value={form.amount} onChange={set('amount')} placeholder="25000" min="1" required />
-              </div>
-              <div className="field" style={{ flex: 1 }}>
-                <label>Delivery date *</label>
-                <input type="date" value={form.deliveryDate} onChange={set('deliveryDate')} min={new Date().toISOString().split('T')[0]} required />
-              </div>
-              <div className="field" style={{ flex: '0 0 130px' }}>
-                <label>Revisions</label>
-                <input type="number" value={form.revisionsIncluded} onChange={set('revisionsIncluded')} min="0" max="20" />
-              </div>
-            </div>
-
-            <div style={s.upiPreview}>
-              <span style={s.upiLabel}>Payment goes to</span>
-              <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: user?.upiId ? 'var(--teal-600)' : 'var(--red-500)', fontWeight: 600 }}>
-                {user?.upiId || 'No UPI ID set'}
-              </span>
-            </div>
-
-            <button type="submit" className="btn btn-primary btn-full" disabled={loading || !user?.upiId} style={{ marginTop: 4 }}>
-              {loading ? 'Creating deal…' : 'Create deal & generate link →'}
-            </button>
-          </form>
-        </div>
-
-        <div style={s.sidebar}>
-          <div style={s.tipCard}>
-            <div style={s.tipTitle}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ color: 'var(--teal-500)' }}><circle cx="7" cy="7" r="6.25" stroke="currentColor" strokeWidth="1.3"/><path d="M7 4.5v.5M7 6.5v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
-              Tips for a great deal
-            </div>
-            <ul style={s.tipList}>
-              {['Be specific in your description — fewer surprises = faster sign-off', 'Set a realistic delivery date to build trust', 'Include 2–3 revisions to avoid scope creep', 'Make sure your UPI ID is correct before sharing'].map((t, i) => (
-                <li key={i} style={s.tipItem}><span style={s.tipBullet}>·</span>{t}</li>
-              ))}
-            </ul>
           </div>
-          <div style={s.howCard}>
-            <div style={s.tipTitle}>What happens next</div>
-            {['Share the link with your client', 'Client reviews, then signs digitally', 'Client taps Pay and opens their UPI app', 'You confirm payment on your dashboard'].map((step, i) => (
-              <div key={i} style={s.howStep}>
-                <div style={s.howNum}>{i + 1}</div>
-                <span style={s.howText}>{step}</span>
-              </div>
-            ))}
-          </div>
+
+          <button type="submit" className="btn btn-teal btn-full btn-lg" disabled={loading} style={{ marginTop: 8 }}>
+            {loading ? 'Creating…' : 'Create proposal →'}
+          </button>
+        </form>
+
+        <div style={s.tips}>
+          <div style={s.tipsTitle}>Tips for getting signed fast</div>
+          {[
+            ['Be specific', 'List exact deliverables so clients know what to expect.'],
+            ['Set a clear deadline', 'A firm date makes the project feel real.'],
+            ['Price confidently', 'Your rate reflects your value — don\'t undersell.'],
+            ['Send on WhatsApp', 'Clients sign faster when they can tap the link directly in chat.'],
+          ].map(([t, d]) => (
+            <div key={t} style={s.tip}>
+              <div style={s.tipTitle}>{t}</div>
+              <div style={s.tipDesc}>{d}</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -153,31 +185,36 @@ export default function CreateDeal() {
 }
 
 const s = {
-  pageHead: { marginBottom: 28 },
-  pageTitle: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--ink)' },
-  pageSub: { fontSize: 14, color: 'var(--ink-muted)', marginTop: 3 },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 280px', gap: 24, alignItems: 'start' },
-  formCard: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14, padding: '28px', boxShadow: 'var(--shadow-xs)' },
-  formSection: { fontSize: 12, fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border)' },
-  row: { display: 'flex', gap: 14, flexWrap: 'wrap' },
-  upiPreview: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--gray-25)', border: '1px solid var(--border)', borderRadius: 8, padding: '11px 14px', marginBottom: 16 },
-  upiLabel: { fontSize: 12, fontWeight: 600, color: 'var(--ink-faint)' },
-  sidebar: { display: 'flex', flexDirection: 'column', gap: 14 },
-  tipCard: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px', boxShadow: 'var(--shadow-xs)' },
-  tipTitle: { fontSize: 12, fontWeight: 700, color: 'var(--ink)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  tipList: { listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 },
-  tipItem: { display: 'flex', gap: 8, fontSize: 12.5, color: 'var(--ink-muted)', lineHeight: 1.55 },
-  tipBullet: { color: 'var(--teal-500)', fontWeight: 700, marginTop: 1, flexShrink: 0 },
-  howCard: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 14, padding: '20px', boxShadow: 'var(--shadow-xs)' },
-  howStep: { display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
-  howNum: { width: 22, height: 22, background: 'var(--teal-50)', color: 'var(--teal-600)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, flexShrink: 0 },
-  howText: { fontSize: 12.5, color: 'var(--ink-muted)', paddingTop: 3, lineHeight: 1.55 },
-  successOuter: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' },
-  successCard: { background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 20, padding: '40px', maxWidth: 500, width: '100%', textAlign: 'center', boxShadow: 'var(--shadow-lg)' },
-  successIcon: { display: 'flex', justifyContent: 'center', marginBottom: 16 },
-  successTitle: { fontSize: 24, fontWeight: 800, letterSpacing: '-0.03em', marginBottom: 8 },
-  successSub: { fontSize: 14, color: 'var(--ink-muted)', marginBottom: 24, lineHeight: 1.65 },
-  linkCard: { display: 'flex', alignItems: 'center', gap: 12, background: 'var(--gray-25)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', marginBottom: 24, textAlign: 'left', overflow: 'hidden' },
-  linkText: { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--ink-muted)' },
-  successActions: { display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' },
+  page:       { maxWidth: 900, width: '100%' },
+  header:     { marginBottom: 28 },
+  title:      { fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--ink)' },
+  sub:        { fontSize: 14, color: 'var(--ink-muted)', marginTop: 4 },
+  grid:       { display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' },
+  formCard:   { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '28px', boxShadow: 'var(--shadow-sm)' },
+  section:    { marginBottom: 4 },
+  sectionTitle:{ fontSize: 11, fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: 16 },
+  twoCol:     { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 },
+  tips:       { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '22px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 16 },
+  tipsTitle:  { fontSize: 12, fontWeight: 700, color: 'var(--ink-faint)', textTransform: 'uppercase', letterSpacing: '.07em' },
+  tip:        { borderLeft: '2px solid var(--border)', paddingLeft: 12 },
+  tipTitle:   { fontSize: 13, fontWeight: 700, color: 'var(--ink)', marginBottom: 3 },
+  tipDesc:    { fontSize: 12.5, color: 'var(--ink-muted)', lineHeight: 1.6 },
+
+  successWrap:{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: '40px 32px', maxWidth: 520, width: '100%', display: 'flex', flexDirection: 'column', gap: 20, boxShadow: 'var(--shadow-lg)' },
+  successTick:{ width: 56, height: 56, background: 'var(--teal-50)', color: 'var(--teal-500)', border: '2px solid var(--teal-100)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800 },
+  successTitle:{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--ink)' },
+  successSub: { fontSize: 14, color: 'var(--ink-muted)', lineHeight: 1.65, marginTop: -10 },
+  linkBox:    { display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', overflow: 'hidden' },
+  linkUrl:    { fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--ink-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 },
+  shareRow:   { display: 'flex', flexDirection: 'column', gap: 10 },
+  dealSummary:{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 },
+  dRow:       { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  dLabel:     { fontSize: 12, color: 'var(--ink-faint)', fontWeight: 600 },
+  dVal:       { fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' },
+  actionRow:  { display: 'flex', gap: 10, justifyContent: 'flex-end' },
 };
+
+// Responsive
+const _s = document.createElement('style');
+_s.textContent = `@media(max-width:768px){.cd-grid{grid-template-columns:1fr!important;}.cd-tips{display:none!important;}.cd-twocol{grid-template-columns:1fr!important;}}`;
+if (!document.querySelector('[data-cd-style]')) { _s.setAttribute('data-cd-style',''); document.head.appendChild(_s); }

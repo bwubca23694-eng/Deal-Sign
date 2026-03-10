@@ -1,60 +1,44 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import axios from 'axios';
 
-const AuthContext = createContext(null);
 const API = process.env.REACT_APP_API_URL || '/api';
+const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,    setUser]    = useState(() => {
+    try { return JSON.parse(localStorage.getItem('df-user')); } catch { return null; }
+  });
+  const [loading, setLoading] = useState(false);
 
-  const applyToken = (token) => {
-    localStorage.setItem('token', token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  };
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      axios.get(`${API}/auth/me`)
-        .then(res => setUser(res.data))
-        .catch(() => { localStorage.removeItem('token'); delete axios.defaults.headers.common['Authorization']; })
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+  const login = useCallback((token, userData) => {
+    localStorage.setItem('df-token', token);
+    localStorage.setItem('df-user', JSON.stringify(userData));
+    setUser(userData);
   }, []);
 
-  const login = async (email, password) => {
-    const res = await axios.post(`${API}/auth/login`, { email, password });
-    applyToken(res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
-  };
+  const loginWithToken = useCallback(async (token) => {
+    localStorage.setItem('df-token', token);
+    const res = await axios.get(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    localStorage.setItem('df-user', JSON.stringify(res.data));
+    setUser(res.data);
+  }, []);
 
-  const register = async (name, email, password, upiId) => {
-    const res = await axios.post(`${API}/auth/register`, { name, email, password, upiId });
-    applyToken(res.data.token);
-    setUser(res.data.user);
-    return res.data.user;
-  };
-
-  const loginWithToken = (token) => {
-    applyToken(token);
-    return axios.get(`${API}/auth/me`).then(res => { setUser(res.data); return res.data; });
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
+  const logout = useCallback(() => {
+    localStorage.removeItem('df-token');
+    localStorage.removeItem('df-user');
     setUser(null);
-  };
+  }, []);
 
-  const updateUser = (updates) => setUser(prev => ({ ...prev, ...updates }));
+  const updateUser = useCallback((data) => {
+    const updated = { ...user, ...data };
+    localStorage.setItem('df-user', JSON.stringify(updated));
+    setUser(updated);
+  }, [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, loginWithToken, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, loginWithToken, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

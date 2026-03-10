@@ -1,0 +1,16 @@
+{
+  "short_name": "DealFlow",
+  "name": "DealFlow – Freelancer Deals",
+  "description": "Create deals, get signatures, receive UPI payments",
+  "icons": [
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#0FA97A",
+  "background_color": "#ffffff",
+  "categories": ["business", "finance", "productivity"],
+  "lang": "en-IN"
+}
