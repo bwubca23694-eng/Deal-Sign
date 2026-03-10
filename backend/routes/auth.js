@@ -1,79 +1,73 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const passport = require('passport');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
+const APP_URL = process.env.APP_URL || 'http://localhost:5000';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+const isProd = process.env.NODE_ENV === 'production';
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'default_secret', { expiresIn: '30d' });
-};
+const makeToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
 
-// POST /api/auth/register
+// ── Local register ─────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, upiId } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ message: 'Name, email and password are required' });
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Name, email, and password are required' });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (await User.findOne({ email }))
       return res.status(400).json({ message: 'Email already registered' });
-    }
 
-    const user = await User.create({ name, email, password, upiId: upiId || '' });
+    const user = await User.create({ name, email, password, upiId: upiId || '', authProvider: 'local' });
 
     res.status(201).json({
-      token: generateToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        upiId: user.upiId
-      }
+      token: makeToken(user._id),
+      user: { id: user._id, name: user.name, email: user.email, upiId: user.upiId, avatar: user.avatar }
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// POST /api/auth/login
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-
+// ── Local login ────────────────────────────────────────────────────────────
+router.post('/login', (req, res, next) => {
+  passport.authenticate('local', { session: false }, (err, user, info) => {
+    if (err) return next(err);
+    if (!user) return res.status(401).json({ message: info?.message || 'Invalid credentials' });
     res.json({
-      token: generateToken(user._id),
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        upiId: user.upiId
-      }
+      token: makeToken(user._id),
+      user: { id: user._id, name: user.name, email: user.email, upiId: user.upiId, avatar: user.avatar }
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+  })(req, res, next);
 });
 
-// GET /api/auth/me
-router.get('/me', protect, async (req, res) => {
+// ── Google OAuth – initiate ────────────────────────────────────────────────
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+
+// ── Google OAuth – callback ────────────────────────────────────────────────
+router.get('/google/callback',
+  passport.authenticate('google', { session: true, failureRedirect: `${isProd ? APP_URL : FRONTEND_URL}/login?error=google_failed` }),
+  (req, res) => {
+    // Issue JWT and redirect to frontend with token in query param
+    const token = makeToken(req.user._id);
+    const frontendBase = isProd ? APP_URL : FRONTEND_URL;
+    res.redirect(`${frontendBase}/auth/callback?token=${token}`);
+  }
+);
+
+// ── Get current user ───────────────────────────────────────────────────────
+router.get('/me', protect, (req, res) => {
   res.json({
     id: req.user._id,
     name: req.user.name,
     email: req.user.email,
-    upiId: req.user.upiId
+    upiId: req.user.upiId,
+    avatar: req.user.avatar,
+    authProvider: req.user.authProvider
   });
 });
 

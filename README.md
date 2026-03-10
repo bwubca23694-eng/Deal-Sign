@@ -1,141 +1,198 @@
-# DealFlow — Freelancer Deal App
+# DealFlow 🤝
 
-A full-stack MVP for freelancers to create project deals, share links with clients, collect digital signatures, and receive UPI payments.
+**Create deals. Collect signatures. Get paid via UPI.**
+
+A full-stack SaaS app for Indian freelancers — send a proposal link, client signs it digitally, client pays via UPI. No payment gateway, no friction.
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Node.js, Express, MongoDB (Mongoose), JWT Auth
-- **Frontend**: React 18, React Router v6, Axios
-- **Payments**: UPI Deep Links (no payment gateway needed)
-- **Signatures**: HTML5 Canvas (touch + mouse)
+| Layer | Technology |
+|-------|-----------|
+| Backend | Node.js, Express, MongoDB (Mongoose) |
+| Auth | JWT + Google OAuth 2.0 (Passport.js) |
+| Frontend | React 18, React Router v6 |
+| Payments | UPI Deep Links |
+| Hosting | Render (single service — backend serves React build) |
 
 ---
 
 ## Project Structure
 
 ```
-freelancer-deal-app/
+dealflow/
 ├── backend/
-│   ├── models/         # Mongoose models (User, Deal)
-│   ├── routes/         # Express routes (auth, deals, profile)
-│   ├── middleware/      # JWT auth middleware
-│   ├── server.js       # Entry point
+│   ├── config/passport.js   ← Google OAuth + local strategy
+│   ├── middleware/auth.js   ← JWT protect middleware
+│   ├── models/User.js       ← User (local + Google)
+│   ├── models/Deal.js       ← Deal schema
+│   ├── routes/auth.js       ← /api/auth (login, register, google, me)
+│   ├── routes/deals.js      ← /api/deals (CRUD)
+│   ├── routes/profile.js    ← /api/profile
+│   ├── server.js            ← Entry point, serves React in prod
 │   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── pages/      # Login, Register, Dashboard, CreateDeal, Profile, ClientDeal
-│   │   ├── components/ # Layout (sidebar nav)
-│   │   ├── context/    # AuthContext (JWT + user state)
-│   │   ├── App.js      # Routes
-│   │   └── index.css   # Global styles
-│   └── .env.example
-└── README.md
+└── frontend/
+    ├── src/
+    │   ├── components/
+    │   │   ├── Layout.js        ← Sidebar shell
+    │   │   └── GoogleButton.js  ← Google OAuth button
+    │   ├── context/AuthContext.js
+    │   ├── pages/
+    │   │   ├── Landing.js       ← Public landing page
+    │   │   ├── Login.js
+    │   │   ├── Register.js
+    │   │   ├── AuthCallback.js  ← Google OAuth token handler
+    │   │   ├── Dashboard.js
+    │   │   ├── CreateDeal.js
+    │   │   ├── Profile.js
+    │   │   └── ClientDeal.js    ← Public deal page (no login needed)
+    │   ├── App.js
+    │   └── index.css
+    └── .env.example
 ```
 
 ---
 
-## Setup Instructions
+## Local Development
 
 ### Prerequisites
-- Node.js v16+
+- Node.js v18+
 - MongoDB (local or Atlas)
+- Google Cloud project with OAuth credentials
 
----
+### 1. Clone & install
 
-### 1. Backend Setup
+```bash
+# Backend
+cd backend && npm install
+
+# Frontend
+cd ../frontend && npm install
+```
+
+### 2. Configure backend
 
 ```bash
 cd backend
-npm install
 cp .env.example .env
 ```
 
 Edit `.env`:
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/freelancer-deal-app
-JWT_SECRET=change_this_to_a_long_random_string
+NODE_ENV=development
+MONGO_URI=mongodb://localhost:27017/dealflow
+JWT_SECRET=<random 32+ char string>
+SESSION_SECRET=<another random string>
+GOOGLE_CLIENT_ID=<from Google Console>
+GOOGLE_CLIENT_SECRET=<from Google Console>
+APP_URL=http://localhost:5000
 FRONTEND_URL=http://localhost:3000
 ```
 
-Start the backend:
-```bash
-npm run dev      # development (with nodemon)
-npm start        # production
-```
-
-Backend runs at: `http://localhost:5000`
-
----
-
-### 2. Frontend Setup
+### 3. Configure frontend
 
 ```bash
 cd frontend
-npm install
 cp .env.example .env
+# Contains: REACT_APP_API_URL=http://localhost:5000/api
 ```
 
-Edit `.env`:
-```env
-REACT_APP_API_URL=http://localhost:5000/api
-```
+### 4. Run
 
-Start the frontend:
 ```bash
-npm start
-```
+# Terminal 1
+cd backend && npm run dev
 
-Frontend runs at: `http://localhost:3000`
+# Terminal 2
+cd frontend && npm start
+```
 
 ---
 
-## Usage Guide
+## Deploying to Render
 
-### Freelancer
-1. Register at `/register` with name, email, password
-2. Go to **Settings** and add your UPI ID (e.g. `yourname@upi`)
-3. Click **New Deal** and fill in project details
-4. Copy the generated deal link and share with client
+This app is designed to run as a **single Render Web Service** — the Express backend serves the compiled React frontend as static files.
 
-### Client
-1. Open the deal link (e.g. `http://yourdomain.com/deal/abc123`)
-2. Review project details
-3. Sign the agreement using touch/mouse signature pad
-4. Tap **Pay via UPI** to open any UPI app and complete payment
+### Step 1: Set up MongoDB Atlas
+1. Create a free cluster at [mongodb.com/cloud/atlas](https://mongodb.com/cloud/atlas)
+2. Whitelist all IPs (`0.0.0.0/0`) under Network Access
+3. Copy your connection string
 
-### After Payment
-- Freelancer goes to Dashboard and clicks **Mark as Paid** on the signed deal
+### Step 2: Set up Google OAuth
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create a project → Enable Google+ API or People API
+3. Create **OAuth 2.0 Client ID** (Web application)
+4. Set Authorized redirect URI: `https://your-app.onrender.com/api/auth/google/callback`
+5. Copy Client ID and Client Secret
+
+### Step 3: Deploy on Render
+1. Push code to GitHub
+2. New Web Service → connect repo
+3. Set these:
+   - **Root directory**: leave blank (repo root)
+   - **Build command**: `cd frontend && npm install && npm run build && cd ../backend && npm install`
+   - **Start command**: `cd backend && node server.js`
+4. Add environment variables:
+
+| Key | Value |
+|-----|-------|
+| `NODE_ENV` | `production` |
+| `MONGO_URI` | Your Atlas connection string |
+| `JWT_SECRET` | Long random string |
+| `SESSION_SECRET` | Another long random string |
+| `GOOGLE_CLIENT_ID` | From Google Console |
+| `GOOGLE_CLIENT_SECRET` | From Google Console |
+| `APP_URL` | `https://your-app-name.onrender.com` |
+
+> **Note:** Do NOT set `FRONTEND_URL` in production. `APP_URL` handles everything.
+
+5. Click **Deploy**
+
+---
+
+## Google OAuth Flow
+
+```
+User clicks "Continue with Google"
+  → GET /api/auth/google
+    → Google consent screen
+      → GET /api/auth/google/callback
+        → JWT generated
+          → Redirect to /auth/callback?token=<jwt>
+            → React saves token → redirects to /dashboard
+```
 
 ---
 
 ## API Reference
 
 ### Auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register new freelancer |
-| POST | `/api/auth/login` | Login |
-| GET | `/api/auth/me` | Get current user (auth required) |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/register` | – | Email registration |
+| POST | `/api/auth/login` | – | Email login |
+| GET | `/api/auth/google` | – | Initiate Google OAuth |
+| GET | `/api/auth/google/callback` | – | Google OAuth callback |
+| GET | `/api/auth/me` | JWT | Get current user |
 
 ### Deals
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/deals` | Create deal (auth required) |
-| GET | `/api/deals` | List all your deals (auth required) |
-| GET | `/api/deals/:dealId` | Get deal by ID (public, marks as viewed) |
-| PATCH | `/api/deals/:dealId/sign` | Client signs deal (public) |
-| PATCH | `/api/deals/:dealId/paid` | Confirm payment (auth required) |
-| DELETE | `/api/deals/:dealId` | Delete deal (auth required) |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/deals` | JWT | Create deal |
+| GET | `/api/deals` | JWT | List my deals |
+| GET | `/api/deals/:id` | – | Get deal (marks as viewed) |
+| PATCH | `/api/deals/:id/sign` | – | Client signs deal |
+| PATCH | `/api/deals/:id/paid` | JWT | Confirm payment |
+| DELETE | `/api/deals/:id` | JWT | Delete deal |
 
 ### Profile
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/profile` | Get profile (auth required) |
-| PATCH | `/api/profile` | Update name/UPI ID (auth required) |
-| PATCH | `/api/profile/password` | Change password (auth required) |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/profile` | JWT | Get profile |
+| PATCH | `/api/profile` | JWT | Update name / UPI ID |
+| PATCH | `/api/profile/password` | JWT | Change password |
 
 ---
 
@@ -145,39 +202,12 @@ Frontend runs at: `http://localhost:3000`
 created → viewed → signed → paid
 ```
 
-- **created**: Deal was created by freelancer
-- **viewed**: Client opened the deal link
-- **signed**: Client drew and confirmed their signature
-- **paid**: Freelancer manually confirmed payment received
-
 ---
 
 ## UPI Deep Link Format
 
 ```
-upi://pay?pa=freelancer@upi&pn=FreelancerName&am=25000&cu=INR&tn=ProjectTitle
+upi://pay?pa=freelancer@upi&pn=Name&am=25000&cu=INR&tn=ProjectTitle
 ```
 
-Opens supported apps: Google Pay, PhonePe, Paytm, BHIM, and all UPI-compatible apps.
-
----
-
-## Production Deployment
-
-### Backend (e.g. Railway, Render, EC2)
-1. Set environment variables
-2. Use `npm start`
-3. Point `MONGO_URI` to MongoDB Atlas
-
-### Frontend (e.g. Vercel, Netlify)
-1. Set `REACT_APP_API_URL` to your deployed backend URL
-2. Run `npm run build`
-3. Deploy the `build/` folder
-
----
-
-## Notes
-
-- Signature data is stored as base64 PNG in MongoDB (consider S3 for production at scale)
-- UPI payment confirmation is manual — integrate a payment webhook for automation
-- JWT tokens expire in 30 days
+Supported apps: Google Pay, PhonePe, Paytm, BHIM, and all compliant UPI apps.
