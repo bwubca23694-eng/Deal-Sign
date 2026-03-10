@@ -50,12 +50,11 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 // ── Google OAuth – callback ────────────────────────────────────────────────
 router.get('/google/callback',
-  passport.authenticate('google', { session: true, failureRedirect: `${isProd ? APP_URL : FRONTEND_URL}/login?error=google_failed` }),
+  passport.authenticate('google', { session: true, failureRedirect: `${FRONTEND_URL}/login?error=google_failed` }),
   (req, res) => {
-    // Issue JWT and redirect to frontend with token in query param
+    // Always redirect to FRONTEND_URL — backend and frontend are on separate domains
     const token = makeToken(req.user._id);
-    const frontendBase = isProd ? APP_URL : FRONTEND_URL;
-    res.redirect(`${frontendBase}/auth/callback?token=${token}`);
+    res.redirect(`${FRONTEND_URL}/auth/callback?token=${token}`);
   }
 );
 
