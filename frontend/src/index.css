@@ -215,25 +215,7 @@ textarea { resize: vertical; min-height: 96px; line-height: 1.65; }
 /* ═══════════════════════════════════════════════════════════
    COLD START SPLASH
 ═══════════════════════════════════════════════════════════ */
-.cold-splash {
-  position: fixed; inset: 0; background: #fff;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 20px; z-index: 9999;
-}
-.cold-logo {
-  width: 60px; height: 60px; background: var(--ink); color: #fff;
-  border-radius: 16px; display: flex; align-items: center; justify-content: center;
-  font-size: 30px; font-weight: 800;
-  animation: logoPulse 1.6s ease-in-out infinite;
-}
-@keyframes logoPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(15,169,122,.35); }
-  50%       { box-shadow: 0 0 0 14px rgba(15,169,122,0); }
-}
-.cold-bar { width: 140px; height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
-.cold-bar-fill { height: 100%; background: var(--green); border-radius: 99px; animation: barAnim 2.2s ease-in-out infinite; }
-@keyframes barAnim { 0%{width:0;margin-left:0} 50%{width:75%;margin-left:0} 75%{width:20%;margin-left:80%} 100%{width:0;margin-left:100%} }
-.cold-text { font-size: 13px; color: var(--ink-faint); font-weight: 500; }
+/* cold start loader — styles are now inline in ColdStartLoader.js */
 
 /* ═══════════════════════════════════════════════════════════
    INSTALL BANNER
