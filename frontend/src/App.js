@@ -7,15 +7,17 @@ import { InstallProvider } from './context/InstallContext';
 import ColdStartLoader from './components/ColdStartLoader';
 import './index.css';
 
-import Login       from './pages/Login';
-import Register    from './pages/Register';
+import Login        from './pages/Login';
+import Register     from './pages/Register';
 import AuthCallback from './pages/AuthCallback';
-import Dashboard   from './pages/Dashboard';
-import CreateDeal  from './pages/CreateDeal';
-import Profile     from './pages/Profile';
-import ClientDeal  from './pages/ClientDeal';
-import Layout      from './components/Layout';
-import Landing     from './pages/Landing';
+import Dashboard    from './pages/Dashboard';
+import CreateDeal   from './pages/CreateDeal';
+import Profile      from './pages/Profile';
+import ClientDeal   from './pages/ClientDeal';
+import DealDetail   from './pages/DealDetail';
+import Templates    from './pages/Templates';
+import Layout       from './components/Layout';
+import Landing      from './pages/Landing';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -31,15 +33,17 @@ const PublicOnly = ({ children }) => {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/"               element={<PublicOnly><Landing /></PublicOnly>} />
-      <Route path="/deal/:dealId"   element={<ClientDeal />} />
-      <Route path="/auth/callback"  element={<AuthCallback />} />
-      <Route path="/login"          element={<PublicOnly><Login /></PublicOnly>} />
-      <Route path="/register"       element={<PublicOnly><Register /></PublicOnly>} />
-      <Route path="/"               element={<PrivateRoute><Layout /></PrivateRoute>}>
-        <Route path="dashboard"     element={<Dashboard />} />
-        <Route path="create-deal"   element={<CreateDeal />} />
-        <Route path="profile"       element={<Profile />} />
+      <Route path="/"              element={<PublicOnly><Landing /></PublicOnly>} />
+      <Route path="/deal/:dealId"  element={<ClientDeal />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/login"         element={<PublicOnly><Login /></PublicOnly>} />
+      <Route path="/register"      element={<PublicOnly><Register /></PublicOnly>} />
+      <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+        <Route path="dashboard"           element={<Dashboard />} />
+        <Route path="create-deal"         element={<CreateDeal />} />
+        <Route path="deal-detail/:dealId" element={<DealDetail />} />
+        <Route path="templates"           element={<Templates />} />
+        <Route path="profile"             element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -57,7 +61,7 @@ export default function App() {
           <InstallProvider>
             <BrowserRouter>
               {!serverReady && <ColdStartLoader onReady={handleReady} />}
-              {serverReady && <AppRoutes />}
+              {serverReady  && <AppRoutes />}
             </BrowserRouter>
           </InstallProvider>
         </AuthProvider>

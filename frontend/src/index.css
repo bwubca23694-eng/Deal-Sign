@@ -531,3 +531,23 @@ textarea { resize: vertical; min-height: 96px; line-height: 1.65; }
 @media (max-width: 480px) {
   .land-step-grid-r { grid-template-columns: 1fr !important; }
 }
+
+/* ── Expired badge ─────────────────────────────────────── */
+.badge-expired { background: rgba(239,68,68,.1); color: #DC2626; }
+.badge-expired .badge-dot { background: #DC2626; }
+
+/* ── Alert success ─────────────────────────────────────── */
+.alert-success { background: var(--teal-50); border-color: var(--teal-100); color: var(--teal-700); }
+
+/* ── Empty state icon ──────────────────────────────────── */
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+/* ── Deal detail timeline line fix ────────────────────── */
+.timeline-line { position:absolute; top:11px; right:50%; width:100%; height:2px; }
+
+/* ── CSS variable: --teal-200 for dashboard hover ──────── */
+:root { --teal-200: #a7f3d0; }
+
+/* ── Quick Pay deal type tag ───────────────────────────── */
+.badge-quickpay { background: var(--teal-50); color: var(--teal-700); }
+.badge-quickpay .badge-dot { background: var(--teal-500); }

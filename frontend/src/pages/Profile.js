@@ -1,180 +1,192 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
-const API = process.env.REACT_APP_API_URL || '/api';
+const API  = process.env.REACT_APP_API_URL || '/api';
+const authH = () => ({ Authorization: `Bearer ${localStorage.getItem('df-token')}` });
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
+
   const [name,    setName]    = useState(user?.name  || '');
   const [upiId,   setUpiId]   = useState(user?.upiId || '');
-  const [profMsg, setProfMsg] = useState('');
-  const [profErr, setProfErr] = useState('');
-  const [profLoad,setProfLoad]= useState(false);
-  const [currPass,setCurrPass]= useState('');
-  const [newPass, setNewPass] = useState('');
-  const [passMsg, setPassMsg] = useState('');
-  const [passErr, setPassErr] = useState('');
-  const [passLoad,setPassLoad]= useState(false);
-  const [qrPreview,setQrPreview]=useState(user?.upiQrUrl||null);
-  const [qrLoad,  setQrLoad]  = useState(false);
-  const [qrMsg,   setQrMsg]   = useState('');
-  const [qrErr,   setQrErr]   = useState('');
-  const fileRef = useRef(null);
+  const [saving,  setSaving]  = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [saveErr, setSaveErr] = useState('');
 
-  const saveProfile = async e => {
-    e.preventDefault(); setProfMsg(''); setProfErr('');
-    setProfLoad(true);
+  const [qrUploading, setQrUploading] = useState(false);
+  const [qrUrl,       setQrUrl]       = useState(user?.upiQrUrl || null);
+  const [qrErr,       setQrErr]       = useState('');
+
+  const [sigUploading, setSigUploading] = useState(false);
+  const [sigUrl,       setSigUrl]       = useState(user?.signatureUrl || null);
+  const [sigErr,       setSigErr]       = useState('');
+
+  const [curPw,   setCurPw]   = useState('');
+  const [newPw,   setNewPw]   = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg,   setPwMsg]   = useState('');
+  const [pwErr,   setPwErr]   = useState('');
+
+  const qrRef  = useRef();
+  const sigRef = useRef();
+
+  const saveProfile = async () => {
+    setSaving(true); setSaveMsg(''); setSaveErr('');
     try {
-      const res = await axios.patch(`${API}/profile`, { name, upiId });
-      updateUser(res.data); setProfMsg('Profile updated ✓');
-      setTimeout(() => setProfMsg(''), 3000);
-    } catch (err) { setProfErr(err.response?.data?.message || 'Update failed'); }
-    finally { setProfLoad(false); }
+      const res = await axios.patch(`${API}/profile`, { name, upiId }, { headers: authH() });
+      updateUser(res.data);
+      setSaveMsg('Profile saved ✓');
+    } catch (e) { setSaveErr(e.response?.data?.message || 'Save failed'); }
+    finally { setSaving(false); }
   };
 
-  const savePass = async e => {
-    e.preventDefault(); setPassMsg(''); setPassErr('');
-    if (newPass.length < 6) { setPassErr('New password must be at least 6 characters'); return; }
-    setPassLoad(true);
+  const uploadQr = async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setQrUploading(true); setQrErr('');
     try {
-      await axios.patch(`${API}/profile/password`, { currentPassword: currPass, newPassword: newPass });
-      setPassMsg('Password updated ✓'); setCurrPass(''); setNewPass('');
-      setTimeout(() => setPassMsg(''), 3000);
-    } catch (err) { setPassErr(err.response?.data?.message || 'Failed'); }
-    finally { setPassLoad(false); }
-  };
-
-  const handleQr = async e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { setQrErr('Please select an image file'); return; }
-    if (file.size > 2 * 1024 * 1024)    { setQrErr('Image must be under 2MB'); return; }
-    const reader = new FileReader();
-    reader.onload = ev => setQrPreview(ev.target.result);
-    reader.readAsDataURL(file);
-    setQrLoad(true); setQrErr(''); setQrMsg('');
-    const fd = new FormData(); fd.append('qr', file);
-    try {
-      const res = await axios.post(`${API}/profile/upi-qr`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const fd = new FormData(); fd.append('qr', file);
+      const res = await axios.post(`${API}/profile/upi-qr`, fd, { headers: { ...authH(), 'Content-Type':'multipart/form-data' } });
+      setQrUrl(res.data.upiQrUrl);
       updateUser({ ...user, upiQrUrl: res.data.upiQrUrl });
-      setQrPreview(res.data.upiQrUrl);
-      setQrMsg('QR uploaded ✓'); setTimeout(() => setQrMsg(''), 3000);
-    } catch (err) { setQrErr(err.response?.data?.message || 'Upload failed'); setQrPreview(user?.upiQrUrl || null); }
-    finally { setQrLoad(false); }
+    } catch (e) { setQrErr(e.response?.data?.message || 'Upload failed'); }
+    finally { setQrUploading(false); }
   };
 
   const removeQr = async () => {
-    if (!window.confirm('Remove UPI QR?')) return;
-    setQrLoad(true);
     try {
-      await axios.delete(`${API}/profile/upi-qr`);
-      updateUser({ ...user, upiQrUrl: null }); setQrPreview(null);
-      setQrMsg('QR removed'); setTimeout(() => setQrMsg(''), 3000);
-    } catch (err) { setQrErr(err.response?.data?.message || 'Failed'); }
-    finally { setQrLoad(false); }
+      await axios.delete(`${API}/profile/upi-qr`, { headers: authH() });
+      setQrUrl(null); updateUser({ ...user, upiQrUrl: null });
+    } catch (e) { setQrErr(e.response?.data?.message || 'Remove failed'); }
   };
 
-  const isGoogle = user?.authProvider === 'google';
-  const initials = (user?.name||'?').split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase();
+  const uploadSig = async e => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setSigUploading(true); setSigErr('');
+    try {
+      const fd = new FormData(); fd.append('signature', file);
+      const res = await axios.post(`${API}/profile/signature`, fd, { headers: { ...authH(), 'Content-Type':'multipart/form-data' } });
+      setSigUrl(res.data.signatureUrl);
+      updateUser({ ...user, signatureUrl: res.data.signatureUrl });
+    } catch (e) { setSigErr(e.response?.data?.message || 'Upload failed'); }
+    finally { setSigUploading(false); }
+  };
+
+  const removeSig = async () => {
+    try {
+      await axios.delete(`${API}/profile/signature`, { headers: authH() });
+      setSigUrl(null); updateUser({ ...user, signatureUrl: null });
+    } catch (e) { setSigErr(e.response?.data?.message || 'Remove failed'); }
+  };
+
+  const changePassword = async () => {
+    setPwSaving(true); setPwMsg(''); setPwErr('');
+    try {
+      await axios.patch(`${API}/profile/password`, { currentPassword: curPw, newPassword: newPw }, { headers: authH() });
+      setPwMsg('Password updated ✓'); setCurPw(''); setNewPw('');
+    } catch (e) { setPwErr(e.response?.data?.message || 'Failed'); }
+    finally { setPwSaving(false); }
+  };
 
   return (
-    <div className="prof-page">
-      <div style={{ marginBottom: 28 }}>
+    <div style={{ maxWidth:600, width:'100%' }}>
+      <div style={{ marginBottom:28 }}>
         <h1 className="page-title">Settings</h1>
-        <p className="page-sub">Manage your profile and payment details.</p>
+        <p className="page-sub">Manage your profile, signature and payment details.</p>
       </div>
 
-      <div className="prof-grid">
-        {/* Left column */}
-        <div>
-          {/* Profile card */}
-          <div className="prof-card">
-            <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20, paddingBottom:20, borderBottom:'1px solid var(--border)' }}>
-              <div className="user-av" style={{ width:48, height:48, fontSize:18 }}>
-                {user?.avatar ? <img src={user.avatar} alt="av" style={{ width:48, height:48, borderRadius:'50%', objectFit:'cover' }} /> : initials}
-              </div>
-              <div>
-                <div style={{ fontSize:16, fontWeight:800, letterSpacing:'-.02em' }}>{user?.name}</div>
-                <div style={{ fontSize:12, color:'var(--ink-faint)', fontFamily:'var(--mono)', marginTop:2 }}>{user?.email}</div>
-                {isGoogle && <span className="google-badge">Connected with Google</span>}
-              </div>
-            </div>
+      {/* Profile */}
+      <Section title="Profile">
+        <div className="field"><label>Name</label><input value={name} onChange={e => setName(e.target.value)} /></div>
+        <div className="field"><label>Email</label><input value={user?.email || ''} disabled style={{ opacity:.6 }} /></div>
+        {saveErr && <div className="alert alert-error">{saveErr}</div>}
+        {saveMsg && <div className="alert alert-success">{saveMsg}</div>}
+        <button className="btn btn-teal" onClick={saveProfile} disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
+      </Section>
 
-            <div className="card-title">Profile</div>
-            <form onSubmit={saveProfile}>
-              {profErr && <div className="alert alert-error">{profErr}</div>}
-              {profMsg && <div className="alert alert-success">{profMsg}</div>}
-              <div className="field">
-                <label>Display name</label>
-                <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" />
-              </div>
-              <div className="field" style={{ marginBottom:20 }}>
-                <label>UPI ID <span style={{ fontSize:11, color:'var(--red)', fontWeight:700, marginLeft:4 }}>* required to receive payments</span></label>
-                <input value={upiId} onChange={e=>setUpiId(e.target.value)} placeholder="yourname@upi" style={{ fontFamily:'var(--mono)' }} />
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={profLoad}>
-                {profLoad ? 'Saving…' : 'Save profile'}
+      {/* Freelancer Signature */}
+      <Section title="Your signature" subtitle="Appears on contract PDFs alongside your client's signature.">
+        <input ref={sigRef} type="file" accept="image/*" style={{ display:'none' }} onChange={uploadSig} />
+        {sigUrl ? (
+          <div>
+            <div style={{ background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:10, padding:16, marginBottom:12, display:'flex', alignItems:'center', justifyContent:'center', minHeight:70 }}>
+              <img src={sigUrl} alt="Your signature" style={{ maxHeight:60, maxWidth:'100%' }} />
+            </div>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="btn btn-outline btn-sm" onClick={() => sigRef.current.click()} disabled={sigUploading}>Replace</button>
+              <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={removeSig}>Remove</button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <div style={{ border:'2px dashed var(--border)', borderRadius:12, padding:'28px 20px', textAlign:'center', marginBottom:12 }}>
+              <div style={{ fontSize:24, marginBottom:8 }}>✍</div>
+              <div style={{ fontSize:13, color:'var(--ink-muted)', marginBottom:12 }}>Upload an image of your handwritten signature</div>
+              <button className="btn btn-outline btn-sm" onClick={() => sigRef.current.click()} disabled={sigUploading}>
+                {sigUploading ? 'Uploading…' : 'Upload signature image'}
               </button>
-            </form>
-          </div>
-
-          {/* Change password */}
-          {!isGoogle && (
-            <div className="prof-card" style={{ marginTop:16 }}>
-              <div className="card-title">Change password</div>
-              <form onSubmit={savePass} style={{ marginTop:16 }}>
-                {passErr && <div className="alert alert-error">{passErr}</div>}
-                {passMsg && <div className="alert alert-success">{passMsg}</div>}
-                <div className="field"><label>Current password</label><input type="password" value={currPass} onChange={e=>setCurrPass(e.target.value)} placeholder="••••••••" /></div>
-                <div className="field" style={{ marginBottom:20 }}><label>New password</label><input type="password" value={newPass} onChange={e=>setNewPass(e.target.value)} placeholder="Min 6 characters" /></div>
-                <button type="submit" className="btn btn-outline" disabled={passLoad}>{passLoad ? 'Updating…' : 'Update password'}</button>
-              </form>
             </div>
-          )}
-        </div>
-
-        {/* Right column — QR */}
-        <div className="prof-card">
-          <div className="card-title">UPI QR Code</div>
-          <p style={{ fontSize:13, color:'var(--ink-muted)', lineHeight:1.65, marginBottom:0 }}>
-            Desktop clients will see this QR code instead of just a UPI ID. Upload yours from Google Pay, PhonePe, or your bank.
-          </p>
-
-          {qrErr && <div className="alert alert-error" style={{ marginTop:12 }}>{qrErr}</div>}
-          {qrMsg && <div className="alert alert-success" style={{ marginTop:12 }}>{qrMsg}</div>}
-
-          <div className="qr-area">
-            {qrPreview ? (
-              <div style={{ position:'relative', display:'inline-block' }}>
-                <img src={qrPreview} alt="UPI QR" style={{ width:160, height:160, objectFit:'contain', background:'#fff', padding:8, borderRadius:10, border:'1px solid var(--border)', display:'block' }} />
-                <span className="qr-badge">✓ QR saved</span>
-              </div>
-            ) : (
-              <div className="qr-empty" style={{ padding:'12px 0' }}>
-                <div style={{ fontSize:36, marginBottom:10 }}>⬜</div>
-                <div style={{ fontSize:13, fontWeight:700, color:'var(--ink-muted)' }}>No QR uploaded yet</div>
-                <div style={{ fontSize:12, color:'var(--ink-faint)', marginTop:4 }}>Desktop clients will see your UPI ID as text</div>
-              </div>
-            )}
+            <p style={{ fontSize:11, color:'var(--ink-faint)', lineHeight:1.6 }}>Tip: Sign on white paper, take a clear photo, and upload it. PNG with transparent background works best.</p>
           </div>
+        )}
+        {sigErr && <div className="alert alert-error" style={{ marginTop:10 }}>{sigErr}</div>}
+      </Section>
 
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleQr} style={{ display:'none' }} />
-          <div style={{ display:'flex', gap:10, marginTop:16 }}>
-            <button className="btn btn-outline btn-full" onClick={()=>fileRef.current.click()} disabled={qrLoad}>
-              {qrLoad ? 'Uploading…' : qrPreview ? '↑ Replace QR' : '↑ Upload QR'}
+      {/* UPI details */}
+      <Section title="UPI payment details" subtitle="Clients use this to pay you after signing.">
+        <div className="field">
+          <label>UPI ID *</label>
+          <input value={upiId} onChange={e => setUpiId(e.target.value)} placeholder="yourname@upi" />
+          <div style={{ fontSize:11, color:'var(--ink-faint)', marginTop:4 }}>Required to create deals. Clients will pay to this ID.</div>
+        </div>
+        <button className="btn btn-outline btn-sm" onClick={saveProfile} disabled={saving} style={{ marginBottom:20 }}>Save UPI ID</button>
+
+        <div>
+          <label style={{ fontSize:12, fontWeight:700, color:'var(--ink-muted)', display:'block', marginBottom:8 }}>UPI QR code <span className="optional">optional</span></label>
+          <input ref={qrRef} type="file" accept="image/*" style={{ display:'none' }} onChange={uploadQr} />
+          {qrUrl ? (
+            <div>
+              <img src={qrUrl} alt="UPI QR" style={{ width:120, height:120, objectFit:'contain', borderRadius:10, border:'1px solid var(--border)', padding:8, marginBottom:10 }} />
+              <div style={{ display:'flex', gap:10 }}>
+                <button className="btn btn-outline btn-sm" onClick={() => qrRef.current.click()} disabled={qrUploading}>Replace QR</button>
+                <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={removeQr}>Remove</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-outline btn-sm" onClick={() => qrRef.current.click()} disabled={qrUploading}>
+              {qrUploading ? 'Uploading…' : '↑ Upload QR code'}
             </button>
-            {qrPreview && <button className="btn btn-danger btn-sm" onClick={removeQr} disabled={qrLoad}>Remove</button>}
-          </div>
-
-          <div style={{ marginTop:20, background:'var(--surface2)', border:'1px solid var(--border)', borderRadius:8, padding:'14px' }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'var(--ink-faint)', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:10 }}>How to get your QR</div>
-            {['Google Pay → Profile → QR code → Screenshot', 'PhonePe → My Money → QR Code → Save', 'Paytm → Profile → Your QR → Download'].map(t => (
-              <div key={t} style={{ fontSize:12, color:'var(--ink-muted)', marginBottom:6, lineHeight:1.5 }}>· {t}</div>
-            ))}
-          </div>
+          )}
+          {qrErr && <div className="alert alert-error" style={{ marginTop:10 }}>{qrErr}</div>}
         </div>
-      </div>
+      </Section>
+
+      {/* Password */}
+      {user?.authProvider !== 'google' && (
+        <Section title="Password">
+          <div className="field"><label>Current password</label><input type="password" value={curPw} onChange={e => setCurPw(e.target.value)} /></div>
+          <div className="field"><label>New password</label><input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} /></div>
+          {pwErr && <div className="alert alert-error">{pwErr}</div>}
+          {pwMsg && <div className="alert alert-success">{pwMsg}</div>}
+          <button className="btn btn-outline" onClick={changePassword} disabled={pwSaving}>{pwSaving ? 'Updating…' : 'Update password'}</button>
+        </Section>
+      )}
+
+      {user?.authProvider === 'google' && (
+        <Section title="Sign-in method">
+          <p style={{ fontSize:14, color:'var(--ink-muted)' }}>You signed in with Google. Password management is handled by Google.</p>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function Section({ title, subtitle, children }) {
+  return (
+    <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'24px', marginBottom:20, boxShadow:'var(--shadow-sm)' }}>
+      <div style={{ fontSize:15, fontWeight:800, color:'var(--ink)', marginBottom: subtitle ? 4 : 16 }}>{title}</div>
+      {subtitle && <p style={{ fontSize:12, color:'var(--ink-muted)', marginBottom:16, lineHeight:1.55 }}>{subtitle}</p>}
+      {children}
     </div>
   );
 }

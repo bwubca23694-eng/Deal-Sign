@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import InstallBanner from './InstallBanner';
 
 const NAV = [
-  { to: '/dashboard',   icon: '◉', label: 'Dashboard'  },
-  { to: '/create-deal', icon: '+',  label: 'New Deal'   },
-  { to: '/profile',     icon: '⚙', label: 'Settings'   },
+  { to: '/dashboard',   label: 'Dashboard'  },
+  { to: '/create-deal', label: 'New Deal'   },
+  { to: '/templates',   label: 'Templates'  },
+  { to: '/profile',     label: 'Settings'   },
 ];
 
 export default function Layout() {
@@ -19,10 +20,8 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      {/* Overlay */}
       <div className={`sidebar-overlay ${open ? 'open' : ''}`} onClick={() => setOpen(false)} />
 
-      {/* Sidebar */}
       <aside className={`app-sidebar ${open ? 'open' : ''}`}>
         <div className="sidebar-head">
           <div className="logo">
@@ -48,22 +47,19 @@ export default function Layout() {
         <div className="sidebar-foot">
           <div className="user-row">
             <div className="user-av">
-              {user?.avatar
-                ? <img src={user.avatar} alt="avatar" />
-                : initials}
+              {user?.avatar ? <img src={user.avatar} alt="avatar" /> : initials}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div className="user-name">{user?.name}</div>
               <div className="user-upi">
                 {user?.upiId
                   ? user.upiId
-                  : <span style={{ color: 'var(--red)' }}>No UPI set</span>}
+                  : <span style={{ color: 'var(--red)' }}>No UPI ID set</span>}
               </div>
             </div>
           </div>
           <div className="foot-row">
-            <button className="btn btn-ghost btn-sm"
-              style={{ flex: 1, justifyContent: 'center' }}
+            <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }}
               onClick={() => { logout(); navigate('/'); }}>
               Sign out
             </button>
@@ -71,9 +67,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="app-main">
-        {/* Mobile topbar */}
         <header className="topbar">
           <button className="icon-btn" onClick={() => setOpen(true)} aria-label="Menu">
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -84,7 +78,7 @@ export default function Layout() {
             <div className="logo-mark">D</div>
             <span className="logo-text">DealFlow</span>
           </div>
-          <button className="btn btn-green btn-sm" onClick={() => navigate('/create-deal')}>+ Deal</button>
+          <button className="btn btn-teal btn-sm" onClick={() => navigate('/create-deal')}>+ Deal</button>
         </header>
 
         <div className="app-content fade-up" key={location.pathname}>
@@ -92,7 +86,6 @@ export default function Layout() {
         </div>
       </main>
 
-      {/* Install banner — only shown when logged in */}
       <InstallBanner />
     </div>
   );
