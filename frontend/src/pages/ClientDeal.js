@@ -145,16 +145,19 @@ export default function ClientDeal() {
           <p style={{ fontSize:13, color:'rgba(255,255,255,.8)' }}>From <strong>{deal.freelancerName}</strong> · For <strong>{deal.clientName}</strong></p>
         </div>
 
-        {/* Key numbers — only render grid if there's at least delivery or revisions to show alongside amount */}
-        {(deal.deliveryDate || deal.revisionsIncluded > 0) ? (
+        {/* Key numbers — quickpay: only delivery/revisions if set; others: always show total + delivery + revisions */}
+        {deal.paymentType === 'quickpay' ? (
+          (deal.deliveryDate || deal.revisionsIncluded > 0) && (
+            <div style={{ display:'grid', gridTemplateColumns:`repeat(${(deal.deliveryDate ? 1 : 0) + (deal.revisionsIncluded > 0 ? 1 : 0)},1fr)`, gap:12, marginBottom:20 }}>
+              {deal.deliveryDate && <NumCard label="Delivery" val={delivStr} />}
+              {deal.revisionsIncluded > 0 && <NumCard label="Revisions" val={deal.revisionsIncluded} />}
+            </div>
+          )
+        ) : (
           <div style={{ display:'grid', gridTemplateColumns:`repeat(${1 + (deal.deliveryDate ? 1 : 0) + (deal.revisionsIncluded > 0 ? 1 : 0)},1fr)`, gap:12, marginBottom:24 }}>
             <NumCard label="Total amount" val={`₹${fmt(total)}`} accent />
             {deal.deliveryDate && <NumCard label="Delivery" val={delivStr} />}
             {deal.revisionsIncluded > 0 && <NumCard label="Revisions" val={deal.revisionsIncluded} />}
-          </div>
-        ) : (
-          <div style={{ marginBottom:20 }}>
-            <span style={{ fontSize:28, fontWeight:800, color:'var(--teal-500)', fontFamily:'var(--mono)' }}>₹{fmt(total)}</span>
           </div>
         )}
 
@@ -286,7 +289,7 @@ export default function ClientDeal() {
               <span style={{ fontSize:18 }}>⚡</span>
               <div>
                 <div style={{ fontSize:13, fontWeight:700, color:'var(--teal-700)' }}>Quick Pay</div>
-                <div style={{ fontSize:12, color:'var(--teal-600)' }}>Tap the button below to pay instantly via UPI — opens Google Pay, PhonePe or any UPI app directly.</div>
+                <div style={{ fontSize:12, color:'var(--teal-600)' }}>Tap the button below to pay instantly via UPI.</div>
               </div>
             </div>
 
