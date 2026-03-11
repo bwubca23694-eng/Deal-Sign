@@ -136,7 +136,12 @@ export default function CreateDeal() {
   if (success) {
     const total = success.paymentType === 'milestone'
       ? success.milestones.reduce((s,m) => s + m.amount, 0) : success.amount;
-    const wa = `https://wa.me/?text=${encodeURIComponent(`📋 *Project Proposal*\n\n*${success.projectTitle}*\nAmount: ₹${Number(total).toLocaleString('en-IN')}\n\nClick to review and sign:\n${dealUrl}`)}`;
+    const isQP  = success.paymentType === 'quickpay';
+    const amtFmt = `₹${Number(total).toLocaleString('en-IN')}`;
+    const waText = isQP
+      ? `Hi ${success.clientName} 👋\n\nHere's a payment request for *${success.projectTitle}*\nAmount: *${amtFmt}*\n\nTap to pay via UPI:\n${dealUrl}`
+      : `Hi ${success.clientName} 👋\n\nI've sent you a project proposal — please review and sign.\n\n📋 *${success.projectTitle}*\n💰 Amount: *${amtFmt}*\n\nOpen the link below to review, sign and pay:\n${dealUrl}`;
+    const wa = `https://wa.me/?text=${encodeURIComponent(waText)}`;
     return (
       <div style={{ maxWidth:520, width:'100%' }}>
         <div className="fade-up" style={card}>
