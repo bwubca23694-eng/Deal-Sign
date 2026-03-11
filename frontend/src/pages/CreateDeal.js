@@ -8,7 +8,7 @@ const FRONTEND = window.location.origin;
 
 const EMPTY_FORM = {
   clientName:'', clientEmail:'', projectTitle:'', projectDescription:'',
-  amount:'', deliveryDate:'', revisionsIncluded:1,
+  amount:'', deliveryDate:'', revisionsIncluded:0,
   paymentType:'single', expiresAt:'',
   milestones:[{ title:'Advance Payment', amount:'', dueDate:'', description:'' },
               { title:'Final Payment',   amount:'', dueDate:'', description:'' }],

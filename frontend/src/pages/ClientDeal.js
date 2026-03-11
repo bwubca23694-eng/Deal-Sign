@@ -171,10 +171,12 @@ export default function ClientDeal() {
         {/* ── STEP: review ─────────────────────────────────────────────── */}
         {step === 'review' && !isExpired && (
           <>
-            <div style={{ marginBottom:20 }}>
-              <SL>Scope of work</SL>
-              <p style={{ fontSize:14, color:'var(--ink-muted)', lineHeight:1.75, whiteSpace:'pre-wrap' }}>{deal.projectDescription}</p>
-            </div>
+            {deal.projectDescription && (
+              <div style={{ marginBottom:20 }}>
+                <SL>Scope of work</SL>
+                <p style={{ fontSize:14, color:'var(--ink-muted)', lineHeight:1.75, whiteSpace:'pre-wrap' }}>{deal.projectDescription}</p>
+              </div>
+            )}
 
             {deal.paymentType === 'milestone' ? (
               <div style={{ marginBottom:20 }}>
@@ -221,9 +223,9 @@ export default function ClientDeal() {
               Client: {deal.clientName}{deal.clientEmail ? ` (${deal.clientEmail})` : ''}</p>
               <p><strong>2. SCOPE OF WORK</strong><br/>
               Project: {deal.projectTitle}<br/>
-              {deal.projectDescription}<br/>
-              Delivery date: {fmtD(deal.deliveryDate)}<br/>
-              Revisions included: {deal.revisionsIncluded}</p>
+              {deal.projectDescription && <>{deal.projectDescription}<br/></>}
+              {deal.deliveryDate && <>Delivery date: {fmtD(deal.deliveryDate)}<br/></>}
+              {deal.revisionsIncluded > 0 && <>Revisions included: {deal.revisionsIncluded}<br/></>}</p>
               {deal.paymentType === 'milestone' ? (
                 <p><strong>3. PAYMENT — MILESTONES</strong><br/>
                 Total: ₹{fmt(total)}<br/>
@@ -297,27 +299,11 @@ export default function ClientDeal() {
               </div>
             )}
 
-            {/* Optional scope/delivery/revisions */}
+            {/* Scope of work — only if filled */}
             {deal.projectDescription && (
               <div style={{ marginBottom:16 }}>
                 <SL>Scope of work</SL>
                 <p style={{ fontSize:14, color:'var(--ink-muted)', lineHeight:1.75, whiteSpace:'pre-wrap', margin:0 }}>{deal.projectDescription}</p>
-              </div>
-            )}
-            {(deal.deliveryDate || deal.revisionsIncluded > 0) && (
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:10, marginBottom:16 }}>
-                {deal.deliveryDate && (
-                  <div style={{ background:'var(--surface2)', borderRadius:10, padding:12 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'var(--ink-faint)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>Delivery</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{fmtD(deal.deliveryDate)}</div>
-                  </div>
-                )}
-                {deal.revisionsIncluded > 0 && (
-                  <div style={{ background:'var(--surface2)', borderRadius:10, padding:12 }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'var(--ink-faint)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:4 }}>Revisions</div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'var(--ink)' }}>{deal.revisionsIncluded}</div>
-                  </div>
-                )}
               </div>
             )}
 
