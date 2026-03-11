@@ -140,18 +140,20 @@ export default function DealDetail() {
   return (
     <div style={{ maxWidth:780, width:'100%' }}>
       {/* Back + actions */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:24, flexWrap:'wrap' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:24, flexWrap:'wrap' }}>
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/dashboard')}>← Dashboard</button>
         <div style={{ flex:1 }} />
-        {deal.status === 'signed' && (
-          <button className="btn btn-outline btn-sm" onClick={downloadPDF} disabled={pdfLoading}>
-            {pdfLoading ? 'Generating…' : '⬇ Contract PDF'}
-          </button>
-        )}
-        {canEdit && !editing && (
-          <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>✏ Edit</button>
-        )}
-        <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={() => setConfirmDel(true)}>Delete</button>
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          {deal.status === 'signed' && (
+            <button className="btn btn-outline btn-sm" onClick={downloadPDF} disabled={pdfLoading}>
+              {pdfLoading ? 'Generating…' : '⬇ Contract PDF'}
+            </button>
+          )}
+          {canEdit && !editing && (
+            <button className="btn btn-outline btn-sm" onClick={() => setEditing(true)}>✏ Edit</button>
+          )}
+          <button className="btn btn-ghost btn-sm" style={{ color:'var(--red)' }} onClick={() => setConfirmDel(true)}>🗑 Delete</button>
+        </div>
       </div>
 
       {/* Status banner */}
@@ -357,13 +359,19 @@ export default function DealDetail() {
         </div>
       )}
 
-      {/* Delete confirm */}
+      {/* Delete confirm — overlay modal */}
       {confirmDel && (
-        <div style={{ background:'var(--surface)', border:'2px solid var(--red)', borderRadius:16, padding:20, marginBottom:20 }}>
-          <p style={{ fontSize:14, fontWeight:700, color:'var(--ink)', marginBottom:12 }}>Delete this deal permanently? This cannot be undone.</p>
-          <div style={{ display:'flex', gap:10 }}>
-            <button className="btn btn-ghost" style={{ background:'var(--red)', color:'#fff' }} onClick={deleteDeal} disabled={deleting}>{deleting ? 'Deleting…' : 'Yes, delete'}</button>
-            <button className="btn btn-ghost" onClick={() => setConfirmDel(false)}>Cancel</button>
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.45)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+          onClick={() => setConfirmDel(false)}>
+          <div style={{ background:'var(--surface)', borderRadius:20, padding:28, maxWidth:380, width:'100%', boxShadow:'var(--shadow-xl)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ width:44, height:44, background:'var(--red-bg)', border:'1px solid var(--red-border)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, marginBottom:16 }}>🗑</div>
+            <div style={{ fontSize:16, fontWeight:800, color:'var(--ink)', marginBottom:6 }}>Delete this deal?</div>
+            <p style={{ fontSize:13.5, color:'var(--ink-muted)', lineHeight:1.6, marginBottom:20 }}>This will permanently remove the proposal and all its data. This cannot be undone.</p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="btn btn-ghost" onClick={() => setConfirmDel(false)} style={{ flex:1 }}>Cancel</button>
+              <button style={{ flex:1, background:'var(--red)', color:'#fff', border:'none', borderRadius:'var(--r-sm)', padding:'10px 18px', fontSize:14, fontWeight:700, cursor:'pointer', fontFamily:'var(--font)' }} onClick={deleteDeal} disabled={deleting}>{deleting ? 'Deleting…' : 'Yes, delete'}</button>
+            </div>
           </div>
         </div>
       )}

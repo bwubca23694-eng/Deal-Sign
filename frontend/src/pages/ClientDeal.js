@@ -209,12 +209,12 @@ export default function ClientDeal() {
               </div>
             )}
 
-            <div style={{ display:'flex', gap:10, marginTop:8 }}>
-              <button className="btn btn-outline btn-full" onClick={() => setStep('agreement')}>
-                📄 Read full agreement
-              </button>
+            <div style={{ display:'flex', flexDirection:'column', gap:10, marginTop:8 }}>
               <button className="btn btn-teal btn-full btn-lg" onClick={() => setStep('sign')}>
                 Proceed to sign →
+              </button>
+              <button className="btn btn-outline btn-full" onClick={() => setStep('agreement')}>
+                📄 Read full agreement
               </button>
             </div>
           </>
@@ -288,7 +288,7 @@ export default function ClientDeal() {
               <span style={{ fontSize:18 }}>⚡</span>
               <div>
                 <div style={{ fontSize:13, fontWeight:700, color:'var(--teal-700)' }}>Quick Pay</div>
-                <div style={{ fontSize:12, color:'var(--teal-600)' }}>Tap the button below to pay instantly via UPI — opens Google Pay, PhonePe or any UPI app directly.</div>
+                <div style={{ fontSize:12, color:'var(--teal-600)' }}>Tap the button below to pay instantly via UPI.</div>
               </div>
             </div>
 
@@ -464,8 +464,8 @@ export default function ClientDeal() {
   );
 }
 
-const pageWrap = { minHeight:'100vh', background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 16px 60px' };
-const card     = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'28px 28px 32px', boxShadow:'var(--shadow-lg)' };
+const pageWrap = { minHeight:'100vh', background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', padding:'24px 12px 60px', overflowX:'hidden' };
+const card     = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'28px 20px 32px', boxShadow:'var(--shadow-lg)', overflowX:'hidden' };
 
 function NumCard({ label, val, accent }) {
   return (

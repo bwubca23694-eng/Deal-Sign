@@ -112,7 +112,7 @@ export default function Dashboard() {
         {FILTERS.map(f => (
           <button key={f} className={`filter-btn${filter===f?' active':''}`} onClick={() => setFilter(f)}>
             {LABEL[f]||'All'}
-            <span className="filter-count">{counts[f]}</span>
+            {counts[f] > 0 && <span className="filter-count">{counts[f]}</span>}
           </button>
         ))}
       </div>
@@ -171,9 +171,16 @@ export default function Dashboard() {
                     <button className="btn btn-ghost btn-sm" onClick={() => setConfirming(null)}>Cancel</button>
                   </>
                 )}
+                {confirming===('del-'+d.dealId) && (
+                  <>
+                    <span style={{ fontSize:12, color:'var(--red)', fontWeight:600 }}>Delete?</span>
+                    <button className="btn btn-sm" style={{ background:'var(--red)', color:'#fff', border:'none' }} onClick={e => { e.stopPropagation(); deleteDeal(d); }}>Yes</button>
+                    <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); setConfirming(null); }}>No</button>
+                  </>
+                )}
                 <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/deal-detail/${d.dealId}`)}>View details →</button>
-                <button className="btn btn-ghost btn-sm" style={{ marginLeft:'auto', color:'var(--ink-faint)' }}
-                  onClick={e => { e.stopPropagation(); if (window.confirm('Delete this deal?')) deleteDeal(d); }}>Delete</button>
+                <button className="btn btn-ghost btn-sm" style={{ marginLeft:'auto', color:'var(--red)', opacity:.7 }}
+                  onClick={e => { e.stopPropagation(); setConfirming('del-'+d.dealId); }}>Delete</button>
               </div>
             </div>
           );
