@@ -145,12 +145,18 @@ export default function ClientDeal() {
           <p style={{ fontSize:13, color:'rgba(255,255,255,.8)' }}>From <strong>{deal.freelancerName}</strong> · For <strong>{deal.clientName}</strong></p>
         </div>
 
-        {/* Key numbers */}
-        <div style={{ display:'grid', gridTemplateColumns:`repeat(${1 + (deal.deliveryDate ? 1 : 0) + (deal.revisionsIncluded > 0 ? 1 : 0)},1fr)`, gap:12, marginBottom:24 }}>
-          <NumCard label="Total amount" val={`₹${fmt(total)}`} accent />
-          {deal.deliveryDate && <NumCard label="Delivery" val={delivStr} />}
-          {deal.revisionsIncluded > 0 && <NumCard label="Revisions" val={deal.revisionsIncluded} />}
-        </div>
+        {/* Key numbers — only render grid if there's at least delivery or revisions to show alongside amount */}
+        {(deal.deliveryDate || deal.revisionsIncluded > 0) ? (
+          <div style={{ display:'grid', gridTemplateColumns:`repeat(${1 + (deal.deliveryDate ? 1 : 0) + (deal.revisionsIncluded > 0 ? 1 : 0)},1fr)`, gap:12, marginBottom:24 }}>
+            <NumCard label="Total amount" val={`₹${fmt(total)}`} accent />
+            {deal.deliveryDate && <NumCard label="Delivery" val={delivStr} />}
+            {deal.revisionsIncluded > 0 && <NumCard label="Revisions" val={deal.revisionsIncluded} />}
+          </div>
+        ) : (
+          <div style={{ marginBottom:20 }}>
+            <span style={{ fontSize:28, fontWeight:800, color:'var(--teal-500)', fontFamily:'var(--mono)' }}>₹{fmt(total)}</span>
+          </div>
+        )}
 
         {/* Expiry warning */}
         {isExpired && (
@@ -279,8 +285,8 @@ export default function ClientDeal() {
             <div style={{ background:'var(--teal-50)', border:'1px solid var(--teal-100)', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:18 }}>⚡</span>
               <div>
-                <div style={{ fontSize:13, fontWeight:700, color:'var(--teal-700)' }}>Quick Pay — no signing needed</div>
-                <div style={{ fontSize:12, color:'var(--teal-600)' }}>Review the details and pay directly via UPI.</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--teal-700)' }}>Quick Pay</div>
+                <div style={{ fontSize:12, color:'var(--teal-600)' }}>Tap the button below to pay instantly via UPI — opens Google Pay, PhonePe or any UPI app directly.</div>
               </div>
             </div>
 
@@ -457,7 +463,7 @@ export default function ClientDeal() {
 }
 
 const pageWrap = { minHeight:'100vh', background:'var(--bg)', display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 16px 60px' };
-const card     = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:28, boxShadow:'var(--shadow-lg)' };
+const card     = { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:16, padding:'28px 28px 32px', boxShadow:'var(--shadow-lg)' };
 
 function NumCard({ label, val, accent }) {
   return (

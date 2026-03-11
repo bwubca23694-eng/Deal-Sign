@@ -255,7 +255,7 @@ export default function CreateDeal() {
           <div>
             <div style={{ background:'var(--teal-50)', border:'1px solid var(--teal-100)', borderRadius:12, padding:'14px 16px', marginBottom:16 }}>
               <div style={{ fontSize:13, fontWeight:700, color:'var(--teal-700)', marginBottom:4 }}>⚡ Quick Pay</div>
-              <div style={{ fontSize:12, color:'var(--teal-600)', lineHeight:1.6 }}>No contract, no signature required. Client sees the amount and pays via UPI directly.</div>
+              <div style={{ fontSize:12, color:'var(--teal-600)', lineHeight:1.6 }}>Send a payment link — client taps it and pays instantly via Google Pay, PhonePe or any UPI app. No contract, no signature needed.</div>
             </div>
             <div className="field"><label>Amount (₹) *</label><input type="number" value={form.amount} onChange={set('amount')} placeholder="5000" min="1" required /></div>
             <div className="field"><label>Note to client <span className="optional">optional</span></label><input value={form.quickPayNote} onChange={set('quickPayNote')} placeholder="e.g. Logo design advance, Invoice #42" /></div>

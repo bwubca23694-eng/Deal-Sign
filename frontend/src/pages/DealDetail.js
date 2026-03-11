@@ -195,7 +195,15 @@ export default function DealDetail() {
         <span style={{ fontSize:11, color:'var(--ink-faint)', fontWeight:600, flexShrink:0 }}>DEAL LINK</span>
         <span style={{ fontSize:12, fontFamily:'var(--mono)', color:'var(--ink-muted)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{dealUrl}</span>
         <button className="btn btn-outline btn-sm" onClick={() => { navigator.clipboard.writeText(dealUrl); }}>Copy</button>
-        <a href={`https://wa.me/?text=${encodeURIComponent('Review & sign this proposal: ' + dealUrl)}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">WA</a>
+        <a href={(() => {
+          const isQP = deal.paymentType === 'quickpay';
+          const total = deal.paymentType === 'milestone'
+            ? deal.milestones.reduce((s,m) => s + m.amount, 0) : deal.amount;
+          const txt = isQP
+            ? `Hi, here's a payment request 👋\n\n*${deal.projectTitle}*\nAmount due: *₹${Number(total).toLocaleString('en-IN')}*\n\nTap to pay via UPI:\n${dealUrl}`
+            : `Hi *${deal.clientName}* 👋\n\nI've sent you a project proposal — please review and sign.\n\n📋 *${deal.projectTitle}*\n💰 Amount: *₹${Number(total).toLocaleString('en-IN')}*\n\n${dealUrl}\n\n_Powered by DealFlow_`;
+          return `https://wa.me/?text=${encodeURIComponent(txt)}`;
+        })()} target="_blank" rel="noreferrer" className="btn btn-outline btn-sm">WA</a>
       </div>
 
       {/* Expiry / extend */}
